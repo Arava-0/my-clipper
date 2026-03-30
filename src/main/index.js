@@ -94,7 +94,7 @@ ipcMain.handle('settings:open-dir-dialog', async () => {
 })
 
 ipcMain.handle('clips:list', () => {
-  const { outputDir } = getSettings()
+  const { outputDir, maxClips } = getSettings()
   const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v']
   try {
     if (!fs.existsSync(outputDir)) return []
@@ -106,6 +106,7 @@ ipcMain.handle('clips:list', () => {
         return { name: f, path: fullPath, size: stat.size, mtime: stat.mtimeMs }
       })
       .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, maxClips)
   } catch {
     return []
   }
@@ -120,6 +121,8 @@ ipcMain.handle('clips:open-folder', () => {
 ipcMain.handle('clips:reveal-file', (_e, filePath) => {
   shell.showItemInFolder(filePath)
 })
+
+ipcMain.handle('app:version', () => app.getVersion())
 
 ipcMain.handle('window:close', (e) => {
   BrowserWindow.fromWebContents(e.sender).close()

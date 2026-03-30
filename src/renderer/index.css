@@ -47,6 +47,12 @@ body {
   font-size: 16px;
   letter-spacing: -0.3px;
 }
+.version {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0;
+}
 
 .btn-open {
   background: var(--surface);
@@ -439,12 +445,71 @@ body {
   gap: 10px;
 }
 
+.stats-wrap {
+  position: relative;
+}
+.stats-wrap:hover .stats-tooltip {
+  display: flex;
+}
+.stats-tooltip {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-width: 280px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+}
+.stats-row span:first-child {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.stats-row span:last-child {
+  text-align: right;
+}
+.stats-path span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.settings-version-inline {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
 .settings-label {
   font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+.settings-number {
+  width: 70px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+.settings-number:focus { outline: none; border-color: var(--muted); }
 
 .settings-dir-row {
   display: flex;

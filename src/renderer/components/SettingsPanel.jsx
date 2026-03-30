@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export default function SettingsPanel({ onClose }) {
+export default function SettingsPanel({ onClose, version }) {
   const [settings, setSettings] = useState(null)
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function SettingsPanel({ onClose }) {
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
-          <span>Settings</span>
+          <span>Settings {version && <span className="settings-version-inline">v{version}</span>}</span>
           <button className="settings-close" onClick={onClose}>✕</button>
         </div>
 
@@ -34,6 +34,19 @@ export default function SettingsPanel({ onClose }) {
             <button className="btn-text" onClick={() => window.electron.openClipsFolder()}>
               Open in Explorer
             </button>
+
+            <span className="settings-label">Max clips in gallery</span>
+            <input
+              className="settings-number"
+              type="number"
+              min="1"
+              max="200"
+              value={settings.maxClips}
+              onChange={(e) => {
+                const val = Math.max(1, Math.min(200, parseInt(e.target.value) || 1))
+                window.electron.setSettings({ maxClips: val }).then(setSettings)
+              }}
+            />
           </div>
         )}
       </div>

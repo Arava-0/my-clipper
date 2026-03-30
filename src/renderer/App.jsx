@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import VideoPlayer from './components/VideoPlayer'
 import Clipper from './components/Clipper'
 import SettingsPanel from './components/SettingsPanel'
@@ -6,7 +6,12 @@ import ClipsList from './components/ClipsList'
 import Logo from './components/Logo'
 
 export default function App() {
+  const [version, setVersion] = useState('')
   const [videoPath, setVideoPath] = useState(null)
+
+  useEffect(() => {
+    window.electron.getVersion().then(setVersion)
+  }, [])
   const [videoSrc, setVideoSrc] = useState(null)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
@@ -14,6 +19,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [clipsRefreshKey, setClipsRefreshKey] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [fileSize, setFileSize] = useState(null)
   const videoRef = useRef(null)
   const hasGoodDuration = useRef(false)
 
@@ -33,6 +39,7 @@ export default function App() {
       hasGoodDuration.current = true
       setDuration(info.duration)
     }
+    if (info.fileSize) setFileSize(info.fileSize)
     setLoading(false)
   }, [])
 
@@ -42,6 +49,7 @@ export default function App() {
     setDuration(0)
     setCurrentTime(0)
     setStartOffset(0)
+    setFileSize(null)
     hasGoodDuration.current = false
   }
 
@@ -74,6 +82,17 @@ export default function App() {
         <div className="header-actions">
           {videoSrc && <button className="btn-open" onClick={handleClose}>Close</button>}
           <button className="btn-open" onClick={handleOpenFile}>Open video</button>
+          {videoSrc && fileSize && (
+            <div className="stats-wrap">
+              <button className="btn-icon" title="Stats">ℹ</button>
+              <div className="stats-tooltip">
+                <div className="stats-row"><span>File</span><span>{videoPath.split(/[\\/]/).pop()}</span></div>
+                <div className="stats-row"><span>Size</span><span>{fileSize >= 1024 ** 3 ? `${(fileSize / 1024 ** 3).toFixed(2)} GB` : fileSize >= 1024 ** 2 ? `${(fileSize / 1024 ** 2).toFixed(1)} MB` : `${(fileSize / 1024).toFixed(0)} KB`}</span></div>
+                <div className="stats-row"><span>Duration</span><span>{Math.floor(duration / 3600) > 0 ? `${Math.floor(duration / 3600)}h ` : ''}{Math.floor((duration % 3600) / 60)}m {Math.floor(duration % 60)}s</span></div>
+                <div className="stats-row stats-path"><span>Path</span><span title={videoPath}>{videoPath}</span></div>
+              </div>
+            </div>
+          )}
           <button className="btn-icon" onClick={() => setSettingsOpen(true)} title="Settings">⚙</button>
           <button className="btn-icon" onClick={() => window.electron.toggleMaximize()} title="Maximize">⛶</button>
           <button className="btn-icon btn-close-app" onClick={() => window.electron.closeWindow()} title="Quit">✕</button>
@@ -119,7 +138,7 @@ export default function App() {
         </div>
       )}
 
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} version={version} />}
     </div>
   )
 }

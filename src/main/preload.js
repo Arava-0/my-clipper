@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electron', {
   listClips: () => ipcRenderer.invoke('clips:list'),
   openClipsFolder: () => ipcRenderer.invoke('clips:open-folder'),
   revealClipFile: (filePath) => ipcRenderer.invoke('clips:reveal-file', filePath),
+  getVersion: () => ipcRenderer.invoke('app:version'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
 

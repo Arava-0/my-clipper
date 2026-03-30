@@ -7,6 +7,7 @@ const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 function getDefaults() {
   return {
     outputDir: path.join(app.getPath('videos'), 'my-clipper'),
+    maxClips: 20,
   }
 }
 

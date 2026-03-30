@@ -30,14 +30,16 @@ function buildOutputPath(inputPath, startTime, endTime, outputDir) {
 function getVideoInfo(inputPath) {
   return new Promise((resolve) => {
     const ffmpegPath = getFfmpegPath()
+    let fileSize = null
+    try { fileSize = fs.statSync(inputPath).size } catch {}
     execFile(ffmpegPath, ['-hide_banner', '-i', inputPath], (_error, _stdout, stderr) => {
       const match = stderr.match(/Duration:\s*(\d+):(\d+):([\d.]+),\s*start:\s*([\d.-]+)/)
       if (match) {
         const duration = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3])
         const startTime = parseFloat(match[4])
-        resolve({ duration, startTime })
+        resolve({ duration, startTime, fileSize })
       } else {
-        resolve({ duration: null, startTime: 0 })
+        resolve({ duration: null, startTime: 0, fileSize })
       }
     })
   })
