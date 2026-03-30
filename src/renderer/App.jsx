@@ -75,6 +75,8 @@ export default function App() {
           {videoSrc && <button className="btn-open" onClick={handleClose}>Close</button>}
           <button className="btn-open" onClick={handleOpenFile}>Open video</button>
           <button className="btn-icon" onClick={() => setSettingsOpen(true)} title="Settings">⚙</button>
+          <button className="btn-icon" onClick={() => window.electron.toggleMaximize()} title="Maximize">⛶</button>
+          <button className="btn-icon btn-close-app" onClick={() => window.electron.closeWindow()} title="Quit">✕</button>
         </div>
       </header>
 

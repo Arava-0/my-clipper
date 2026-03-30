@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
 const { clipVideo, getVideoInfo } = require('./ffmpeg')
 const { getSettings, setSettings } = require('./settings')
 const path = require('path')
@@ -14,7 +14,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 500,
     backgroundColor: '#0f0f0f',
-    titleBarStyle: 'hiddenInset',
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -31,7 +31,10 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
+  createWindow()
+})
 
 app.whenReady().then(() => {
   if (!isDev) {
@@ -116,4 +119,13 @@ ipcMain.handle('clips:open-folder', () => {
 
 ipcMain.handle('clips:reveal-file', (_e, filePath) => {
   shell.showItemInFolder(filePath)
+})
+
+ipcMain.handle('window:close', (e) => {
+  BrowserWindow.fromWebContents(e.sender).close()
+})
+
+ipcMain.handle('window:toggle-maximize', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender)
+  win.isMaximized() ? win.unmaximize() : win.maximize()
 })

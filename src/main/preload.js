@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('electron', {
   listClips: () => ipcRenderer.invoke('clips:list'),
   openClipsFolder: () => ipcRenderer.invoke('clips:open-folder'),
   revealClipFile: (filePath) => ipcRenderer.invoke('clips:reveal-file', filePath),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
 
   onClipProgress: (cb) => {
     const handler = (_e, data) => cb(data)
