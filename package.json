@@ -45,6 +45,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
     },
+    "files": [
+      "src/main/**",
+      "dist/renderer/**"
+    ],
     "asarUnpack": [
       "node_modules/ffmpeg-static/**"
     ],
