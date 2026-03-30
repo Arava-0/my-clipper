@@ -89,7 +89,6 @@ export default function App() {
                 <div className="stats-row"><span>File</span><span>{videoPath.split(/[\\/]/).pop()}</span></div>
                 <div className="stats-row"><span>Size</span><span>{fileSize >= 1024 ** 3 ? `${(fileSize / 1024 ** 3).toFixed(2)} GB` : fileSize >= 1024 ** 2 ? `${(fileSize / 1024 ** 2).toFixed(1)} MB` : `${(fileSize / 1024).toFixed(0)} KB`}</span></div>
                 <div className="stats-row"><span>Duration</span><span>{Math.floor(duration / 3600) > 0 ? `${Math.floor(duration / 3600)}h ` : ''}{Math.floor((duration % 3600) / 60)}m {Math.floor(duration % 60)}s</span></div>
-                <div className="stats-row stats-path"><span>Path</span><span title={videoPath}>{videoPath}</span></div>
               </div>
             </div>
           )}
