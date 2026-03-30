@@ -90,7 +90,9 @@ node_modules/
 .yarn/
 .pnp.*
 dist/
-build/
+build/*
+!build/icon.ico
+!build/icon.svg
 .next/
 .nuxt/
 .output/
