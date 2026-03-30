@@ -1,6 +1,6 @@
 {
   "name": "my-clipper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fast video clipper using FFmpeg",
   "main": "src/main/index.js",
   "scripts": {
