@@ -1,0 +1,54 @@
+{
+  "name": "my-clipper",
+  "version": "1.0.0",
+  "description": "Fast video clipper using FFmpeg",
+  "main": "src/main/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm:vite\" \"npm:electron:wait\"",
+    "vite": "vite",
+    "electron:wait": "wait-on http://localhost:5173 && electron .",
+    "build": "vite build",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arava-0/my-clipper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1",
+    "vite": "^8.0.3",
+    "wait-on": "^9.0.4"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "ffmpeg-static": "^5.3.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "build": {
+    "appId": "fr.arava.myclipper",
+    "productName": "My Clipper",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "Arava-0",
+      "repo": "my-clipper"
+    }
+  }
+}
