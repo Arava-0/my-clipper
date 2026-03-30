@@ -11,6 +11,6 @@
     <polygon points="4,3 28,16 4,29" fill="#e63946" clip-path="url(#logo-upper)" />
   </g>
   <g transform="translate(-1,1.5)">
-    <polygon points="4,3 28,16 4,29" fill="#f0f0f0" clip-path="url(#logo-lower)" />
+    <polygon points="4,3 28,16 4,29" fill="#3a3a3a" clip-path="url(#logo-lower)" />
   </g>
 </svg>
