@@ -1,0 +1,16 @@
+<svg width="256" height="256" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="logo-upper">
+      <polygon points="-2,-2 34,-2 34,9 -2,23" />
+    </clipPath>
+    <clipPath id="logo-lower">
+      <polygon points="-2,25 34,11 34,34 -2,34" />
+    </clipPath>
+  </defs>
+  <g transform="translate(1,-1.5)">
+    <polygon points="4,3 28,16 4,29" fill="#e63946" clip-path="url(#logo-upper)" />
+  </g>
+  <g transform="translate(-1,1.5)">
+    <polygon points="4,3 28,16 4,29" fill="#f0f0f0" clip-path="url(#logo-lower)" />
+  </g>
+</svg>

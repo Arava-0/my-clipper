@@ -18,10 +18,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
+    "png-to-ico": "^3.0.1",
     "vite": "^8.0.3",
     "wait-on": "^9.0.4"
   },
@@ -34,6 +36,7 @@
   "build": {
     "appId": "fr.arava.myclipper",
     "productName": "My Clipper",
+    "icon": "build/icon.ico",
     "win": {
       "target": "nsis"
     },
