@@ -38,7 +38,8 @@
     "productName": "My Clipper",
     "icon": "build/icon.ico",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "my-clipper-setup-${version}.exe"
     },
     "nsis": {
       "oneClick": false,
