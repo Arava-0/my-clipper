@@ -8,6 +8,7 @@ function getDefaults() {
   return {
     outputDir: path.join(app.getPath('videos'), 'my-clipper'),
     maxClips: 20,
+    deleteConfirmation: true,
   }
 }
 

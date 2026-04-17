@@ -8,9 +8,11 @@ import Logo from './components/Logo'
 export default function App() {
   const [version, setVersion] = useState('')
   const [videoPath, setVideoPath] = useState(null)
+  const [settings, setSettings] = useState({ maxClips: 20 })
 
   useEffect(() => {
     window.electron.getVersion().then(setVersion)
+    window.electron.getSettings().then(setSettings)
   }, [])
   const [videoSrc, setVideoSrc] = useState(null)
   const [duration, setDuration] = useState(0)
@@ -116,7 +118,7 @@ export default function App() {
               <span>or click to browse</span>
             </div>
           </div>
-          <ClipsList onLoad={loadVideo} refreshKey={clipsRefreshKey} />
+          <ClipsList onLoad={loadVideo} refreshKey={clipsRefreshKey} settings={settings} />
         </div>
       ) : (
         <div className="workspace">
@@ -137,7 +139,7 @@ export default function App() {
         </div>
       )}
 
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} version={version} />}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} version={version} onSettingsChange={setSettings} />}
     </div>
   )
 }

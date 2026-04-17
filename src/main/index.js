@@ -93,23 +93,130 @@ ipcMain.handle('settings:open-dir-dialog', async () => {
   return filePaths[0]
 })
 
-ipcMain.handle('clips:list', () => {
-  const { outputDir, maxClips } = getSettings()
+function resolveDir(outputDir, pathArr) {
+  if (!pathArr || pathArr.length === 0) return outputDir
+  return path.join(outputDir, ...pathArr)
+}
+
+ipcMain.handle('clips:list', (_e, pathArr) => {
+  const { outputDir } = getSettings()
   const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v']
+  const dir = resolveDir(outputDir, pathArr)
   try {
-    if (!fs.existsSync(outputDir)) return []
-    return fs.readdirSync(outputDir)
+    if (!fs.existsSync(dir)) return []
+    return fs.readdirSync(dir)
       .filter(f => videoExts.includes(path.extname(f).slice(1).toLowerCase()))
       .map(f => {
-        const fullPath = path.join(outputDir, f)
+        const fullPath = path.join(dir, f)
         const stat = fs.statSync(fullPath)
         return { name: f, path: fullPath, size: stat.size, mtime: stat.mtimeMs }
       })
       .sort((a, b) => b.mtime - a.mtime)
-      .slice(0, maxClips)
   } catch {
     return []
   }
+})
+
+function countClipsRecursive(dir, videoExts) {
+  let count = 0
+  try {
+    for (const f of fs.readdirSync(dir)) {
+      const full = path.join(dir, f)
+      try {
+        if (fs.statSync(full).isDirectory()) {
+          count += countClipsRecursive(full, videoExts)
+        } else if (videoExts.includes(path.extname(f).slice(1).toLowerCase())) {
+          count++
+        }
+      } catch {}
+    }
+  } catch {}
+  return count
+}
+
+ipcMain.handle('clips:list-folders', (_e, pathArr) => {
+  const { outputDir } = getSettings()
+  const dir = resolveDir(outputDir, pathArr)
+  const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v']
+  try {
+    if (!fs.existsSync(dir)) return []
+    return fs.readdirSync(dir)
+      .filter(f => {
+        try { return fs.statSync(path.join(dir, f)).isDirectory() } catch { return false }
+      })
+      .map(f => {
+        const folderPath = path.join(dir, f)
+        return { name: f, path: folderPath, clipCount: countClipsRecursive(folderPath, videoExts) }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+  } catch {
+    return []
+  }
+})
+
+ipcMain.handle('clips:create-folder', (_e, { pathArr, name }) => {
+  const { outputDir } = getSettings()
+  const folderPath = path.join(resolveDir(outputDir, pathArr), name)
+  if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true })
+  return folderPath
+})
+
+ipcMain.handle('clips:move-clip', (_e, { clipPath, targetPathArr }) => {
+  const { outputDir } = getSettings()
+  const fileName = path.basename(clipPath)
+  const destDir = resolveDir(outputDir, targetPathArr)
+  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true })
+  const destPath = path.join(destDir, fileName)
+  fs.renameSync(clipPath, destPath)
+  return destPath
+})
+
+ipcMain.handle('clips:delete', (_e, filePath) => {
+  fs.unlinkSync(filePath)
+})
+
+ipcMain.handle('clips:delete-folder', (_e, { folderPath, action, parentPathArr }) => {
+  const { outputDir } = getSettings()
+  const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v']
+
+  if (action === 'rmdir' || action === 'delete-all') {
+    fs.rmSync(folderPath, { recursive: true, force: true })
+    return
+  }
+
+  const destDir = action === 'move-to-root'
+    ? outputDir
+    : resolveDir(outputDir, parentPathArr)
+
+  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true })
+
+  function moveClipsFrom(dir) {
+    for (const f of fs.readdirSync(dir)) {
+      const full = path.join(dir, f)
+      try {
+        if (fs.statSync(full).isDirectory()) {
+          moveClipsFrom(full)
+        } else if (videoExts.includes(path.extname(f).slice(1).toLowerCase())) {
+          let dest = path.join(destDir, f)
+          if (fs.existsSync(dest)) {
+            const ext = path.extname(f)
+            dest = path.join(destDir, `${path.basename(f, ext)}_moved${ext}`)
+          }
+          fs.renameSync(full, dest)
+        }
+      } catch {}
+    }
+  }
+
+  moveClipsFrom(folderPath)
+  fs.rmSync(folderPath, { recursive: true, force: true })
+})
+
+ipcMain.handle('clips:rename-folder', (_e, { folderPath, newName }) => {
+  const dir = path.dirname(folderPath)
+  const newPath = path.join(dir, newName)
+  fs.renameSync(folderPath, newPath)
+  return newPath
 })
 
 ipcMain.handle('clips:open-folder', () => {

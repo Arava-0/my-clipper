@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 
-export default function SettingsPanel({ onClose, version }) {
+export default function SettingsPanel({ onClose, version, onSettingsChange }) {
   const [settings, setSettings] = useState(null)
 
   useEffect(() => {
     window.electron.getSettings().then(setSettings)
   }, [])
 
+  const applySettings = (updated) => {
+    setSettings(updated)
+    if (onSettingsChange) onSettingsChange(updated)
+  }
+
   const handleChangeDir = async () => {
     const dir = await window.electron.openDirDialog()
     if (!dir) return
     const updated = await window.electron.setSettings({ outputDir: dir })
-    setSettings(updated)
+    applySettings(updated)
   }
 
   return (
@@ -44,9 +49,22 @@ export default function SettingsPanel({ onClose, version }) {
               value={settings.maxClips}
               onChange={(e) => {
                 const val = Math.max(1, Math.min(200, parseInt(e.target.value) || 1))
-                window.electron.setSettings({ maxClips: val }).then(setSettings)
+                window.electron.setSettings({ maxClips: val }).then(applySettings)
               }}
             />
+
+            <span className="settings-label">Clips</span>
+            <label className="settings-toggle-row">
+              <span>Confirmation avant suppression</span>
+              <div
+                className={`settings-toggle ${settings.deleteConfirmation ? 'on' : ''}`}
+                onClick={() => {
+                  window.electron.setSettings({ deleteConfirmation: !settings.deleteConfirmation }).then(applySettings)
+                }}
+              >
+                <div className="settings-toggle-knob" />
+              </div>
+            </label>
           </div>
         )}
       </div>
