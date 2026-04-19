@@ -760,7 +760,47 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
 }
+
+.settings-footer {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-footer-line {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.settings-footer-note {
+  font-style: italic;
+  opacity: 0.7;
+}
+.settings-footer-link {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.settings-footer-link:hover { color: var(--text); }
+.settings-footer-repo {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  text-decoration: none;
+  color: var(--muted);
+  opacity: 0.85;
+}
+.settings-footer-repo:hover { opacity: 1; color: var(--text); }
 
 .stats-wrap {
   position: relative;

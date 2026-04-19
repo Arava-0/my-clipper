@@ -230,6 +230,7 @@ ipcMain.handle('clips:reveal-file', (_e, filePath) => {
 })
 
 ipcMain.handle('app:version', () => app.getVersion())
+ipcMain.handle('shell:open-external', (_e, url) => shell.openExternal(url))
 
 ipcMain.handle('window:close', (e) => {
   BrowserWindow.fromWebContents(e.sender).close()

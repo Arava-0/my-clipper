@@ -24,6 +24,11 @@
 
 → [Dernière version](../../releases/latest)
 
+### Licence & contributions
+
+Ce projet est open source sous licence **[MIT](LICENSE)**.
+Il n'est **pas ouvert aux contributions externes** — le code est partagé à titre de référence.
+
 ---
 
 ## EN — English
@@ -38,3 +43,8 @@
 ### Download
 
 → [Latest release](../../releases/latest)
+
+### License & contributions
+
+This project is open source under the **[MIT License](LICENSE)**.
+It is **not open to external contributions** — the code is shared for reference only.
