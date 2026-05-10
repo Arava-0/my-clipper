@@ -27,6 +27,16 @@ function buildOutputPath(inputPath, startTime, endTime, outputDir) {
   return path.join(dir, `${base}_clip_${startStr}_${endStr}${ext}`)
 }
 
+function buildCopyPath(inputPath) {
+  const dir = path.dirname(inputPath)
+  const ext = path.extname(inputPath)
+  const base = path.basename(inputPath, ext)
+  let i = 2
+  let out
+  do { out = path.join(dir, `${base} (${i})${ext}`); i++ } while (fs.existsSync(out))
+  return out
+}
+
 function getVideoInfo(inputPath) {
   return new Promise((resolve) => {
     const ffmpegPath = getFfmpegPath()
@@ -45,7 +55,7 @@ function getVideoInfo(inputPath) {
   })
 }
 
-function clipVideo(inputPath, startTime, endTime, outputDir, onProgress) {
+function clipVideo(inputPath, startTime, endTime, outputDir, onProgress, muteAudio = false) {
   return new Promise((resolve, reject) => {
     const ffmpegPath = getFfmpegPath()
 
@@ -61,7 +71,7 @@ function clipVideo(inputPath, startTime, endTime, outputDir, onProgress) {
       '-ss', String(startTime),
       '-to', String(endTime),
       '-i', inputPath,
-      '-c', 'copy',
+      ...(muteAudio ? ['-c:v', 'copy', '-an'] : ['-c', 'copy']),
       '-progress', 'pipe:1',
       '-nostats',
       outputPath,
@@ -94,4 +104,89 @@ function clipVideo(inputPath, startTime, endTime, outputDir, onProgress) {
   })
 }
 
-module.exports = { clipVideo, getVideoInfo }
+function getDuration(filePath) {
+  return new Promise((resolve) => {
+    execFile(getFfmpegPath(), ['-hide_banner', '-i', filePath], (_err, _stdout, stderr) => {
+      const m = stderr.match(/Duration:\s*(\d+):(\d+):([\d.]+)/)
+      resolve(m ? parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]) : 0)
+    })
+  })
+}
+
+function spawnWithProgress(args, tmpPath, inputPath, duration, onProgress) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(getFfmpegPath(), args)
+    let stderr = ''
+
+    proc.stdout.on('data', (data) => {
+      const kvs = {}
+      for (const line of data.toString().split('\n')) {
+        const eq = line.indexOf('=')
+        if (eq > 0) kvs[line.slice(0, eq).trim()] = line.slice(eq + 1).trim()
+      }
+      if (kvs.out_time_ms && onProgress && duration > 0) {
+        const elapsed = Math.max(0, parseInt(kvs.out_time_ms)) / 1e6
+        onProgress(Math.min(100, Math.round((elapsed / duration) * 100)))
+      }
+    })
+
+    proc.stderr.on('data', (data) => { stderr += data.toString() })
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        try { fs.unlinkSync(inputPath); fs.renameSync(tmpPath, inputPath); resolve(inputPath) }
+        catch (e) { reject(e) }
+      } else {
+        try { fs.unlinkSync(tmpPath) } catch {}
+        reject(new Error(stderr || `FFmpeg exited with code ${code}`))
+      }
+    })
+    proc.on('error', reject)
+  })
+}
+
+async function muteAudioInPlace(inputPath, onProgress) {
+  const duration = await getDuration(inputPath)
+  const tmpPath = path.join(path.dirname(inputPath), '__tmp__' + path.basename(inputPath))
+  const args = [
+    '-y',
+    '-i', inputPath,
+    '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
+    '-map', '0:v', '-map', '1:a', '-map', '0:a',
+    '-c:v', 'copy', '-c:a:0', 'aac', '-b:a:0', '64k', '-c:a:1', 'copy',
+    '-shortest',
+    '-disposition:a:0', 'default', '-disposition:a:1', '0',
+    '-progress', 'pipe:1', '-nostats',
+    tmpPath,
+  ]
+  return spawnWithProgress(args, tmpPath, inputPath, duration, onProgress)
+}
+
+async function restoreAudioOnFile(inputPath, onProgress) {
+  const duration = await getDuration(inputPath)
+  const tmpPath = path.join(path.dirname(inputPath), '__tmp__' + path.basename(inputPath))
+  const args = [
+    '-y',
+    '-i', inputPath,
+    '-map', '0:v', '-map', '0:a:1',
+    '-c', 'copy',
+    '-disposition:a:0', 'default',
+    '-progress', 'pipe:1', '-nostats',
+    tmpPath,
+  ]
+  return spawnWithProgress(args, tmpPath, inputPath, duration, onProgress)
+}
+
+function checkHasAudio(filePath) {
+  return new Promise((resolve) => {
+    const ffmpegPath = getFfmpegPath()
+    execFile(ffmpegPath, ['-hide_banner', '-i', filePath], (_err, _stdout, stderr) => {
+      const audioLines = stderr.split('\n').filter(l => /Stream #\d+:\d+[^:]*: Audio:/.test(l))
+      if (audioLines.length === 0) return resolve(false)
+      if (audioLines.length >= 2) return resolve('muted')
+      resolve(true)
+    })
+  })
+}
+
+module.exports = { clipVideo, getVideoInfo, muteAudioInPlace, restoreAudioOnFile, checkHasAudio }
