@@ -664,6 +664,19 @@ body {
 .clip-item:hover .clip-drag-handle { opacity: 1; }
 .clip-drag-handle:active { cursor: grabbing; }
 
+.clip-processing-bar {
+  height: 3px;
+  background: var(--border);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.clip-processing-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s;
+}
+
 .clip-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
