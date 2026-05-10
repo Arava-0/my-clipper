@@ -677,6 +677,22 @@ body {
   transition: width 0.15s;
 }
 
+.clip-no-audio-badge {
+  position: absolute;
+  bottom: 40px;
+  left: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--muted);
+  backdrop-filter: blur(2px);
+}
+
 .clip-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -699,7 +715,26 @@ body {
   text-overflow: ellipsis;
 }
 
-.clip-meta { font-size: 11px; color: var(--muted); }
+.clip-meta { font-size: 11px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+
+.clip-no-audio-icon { color: var(--accent); display: flex; align-items: center; flex-shrink: 0; }
+
+.clip-copy-done {
+  font-size: 11px;
+  color: #6fcf97;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.clip-audio-checking {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
 
 /* Clip progress */
 .clip-progress {
