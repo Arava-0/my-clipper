@@ -41,6 +41,18 @@ const IconExternalLink = () => (
     <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
   </svg>
 )
+const IconVolumeOff = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+  </svg>
+)
+const IconVolumeOn = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>
+  </svg>
+)
 
 function formatSize(bytes) {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`
@@ -52,30 +64,58 @@ function formatDate(ms) {
   return new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function ClipThumb({ filePath }) {
-  const src = encodeURI(`file://${filePath.replace(/\\/g, '/')}`)
+function ClipCard({ clip, isSelected, processingPercent, onContextMenu, onMouseUp, onDragStart, onDragEnd }) {
+  const src = encodeURI(`file://${clip.path.replace(/\\/g, '/')}`)
   const videoRef = useRef(null)
+
   return (
-    <video
-      ref={videoRef}
-      className="clip-thumb"
-      src={src}
-      muted
-      preload="metadata"
-      onLoadedMetadata={(e) => { e.target.currentTime = 2 }}
-      onMouseEnter={() => { videoRef.current?.play() }}
-      onMouseLeave={() => {
-        if (videoRef.current) {
-          videoRef.current.pause()
-          videoRef.current.currentTime = 2
-        }
-      }}
-    />
+    <div
+      className={`clip-item${isSelected ? ' clip-selected' : ''}`}
+      onContextMenu={onContextMenu}
+      onMouseUp={onMouseUp}
+    >
+      <div
+        className="clip-drag-handle"
+        title="Glisser vers un dossier"
+        draggable
+        onMouseDown={e => e.stopPropagation()}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
+        ⠿
+      </div>
+      {isSelected && <div className="clip-check">✓</div>}
+      <video
+        ref={videoRef}
+        className="clip-thumb"
+        src={src}
+        muted
+        preload="metadata"
+        onLoadedMetadata={(e) => { e.target.currentTime = 2 }}
+        onMouseEnter={() => videoRef.current?.play()}
+        onMouseLeave={() => {
+          if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 2 }
+        }}
+      />
+      <div className="clip-processing-bar">
+        <div className="clip-processing-fill" style={{ width: processingPercent !== null ? `${processingPercent}%` : '0%', opacity: processingPercent !== null ? 1 : 0 }} />
+      </div>
+      <div className="clip-info">
+        <span className="clip-name">{clip.name}</span>
+        <span className="clip-meta">
+          <span>{formatSize(clip.size)} · {formatDate(clip.mtime)}</span>
+          {clip.hasAudio === null && <span className="clip-audio-checking" />}
+          {clip.hasAudio === false && <span className="clip-no-audio-icon"><IconVolumeOff size={14} /></span>}
+          {clip.hasAudio === 'muted' && <span className="clip-no-audio-icon" style={{ color: '#f4a261' }}><IconVolumeOff size={14} /></span>}
+        </span>
+      </div>
+    </div>
   )
 }
 
-function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, onDelete, onClose }) {
+function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, onDelete, onMuteAudio, onRestoreAudio, onClose }) {
   const ref = useRef(null)
+
   useEffect(() => {
     const h = () => onClose()
     document.addEventListener('mousedown', h)
@@ -106,6 +146,16 @@ function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, 
       <button className="context-menu-item" onClick={onReveal}>
         <span className="context-menu-icon"><IconEye /></span> Voir dans le dossier
       </button>
+      {onMuteAudio && (
+        <button className="context-menu-item" onClick={onMuteAudio}>
+          <span className="context-menu-icon"><IconVolumeOff /></span> Désactiver l'audio
+        </button>
+      )}
+      {onRestoreAudio && (
+        <button className="context-menu-item" onClick={onRestoreAudio}>
+          <span className="context-menu-icon"><IconVolumeOn /></span> Activer l'audio
+        </button>
+      )}
       <div className="context-menu-divider" />
       <button className="context-menu-item context-menu-danger" onClick={onDelete}>
         <span className="context-menu-icon"><IconTrash /></span> Supprimer le clip
@@ -246,11 +296,16 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [newFolderMode, setNewFolderMode] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [audioProcessing, setAudioProcessing] = useState(null)
   const ref = useRef(null)
   const drag = useRef({ active: false, startY: 0, startScroll: 0 })
   const draggingClip = useRef(null)
+  const fetchedAudioPaths = useRef(new Set())
 
   const loadData = useCallback(async (pathArr) => {
+    fetchedAudioPaths.current = new Set()
+    setLoading(true)
     const [c, f] = await Promise.all([
       window.electron.listClips(pathArr),
       window.electron.listFolders(pathArr),
@@ -258,10 +313,25 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
     setClips(c)
     setFolders(f)
     setSelectedPaths(new Set())
+    setLoading(false)
   }, [])
 
   useEffect(() => { loadData(currentPath) }, [refreshKey, currentPath, loadData])
   useEffect(() => { setVisibleCount(maxClips) }, [maxClips])
+
+  useEffect(() => {
+    if (loading) return
+    const toFetch = clips.slice(0, visibleCount)
+      .filter(c => c.hasAudio === null && !fetchedAudioPaths.current.has(c.path))
+    if (toFetch.length === 0) return
+    toFetch.forEach(c => fetchedAudioPaths.current.add(c.path))
+    window.electron.checkAudioBatch(toFetch.map(c => c.path)).then(results => {
+      setClips(prev => {
+        const map = new Map(results.map(r => [r.path, r.hasAudio]))
+        return prev.map(c => map.has(c.path) ? { ...c, hasAudio: map.get(c.path) } : c)
+      })
+    })
+  }, [visibleCount, clips, loading])
 
   useEffect(() => {
     if (!selectionMoveOpen) return
@@ -342,7 +412,33 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
     loadData(currentPath)
   }
 
-  const handleDeleteRequest = () => {
+const handleMuteAudio = async () => {
+    const clip = contextMenu.clip
+    setContextMenu(null)
+    setAudioProcessing({ path: clip.path, percent: 0 })
+    const off = window.electron.onAudioProcessProgress(({ percent }) => {
+      setAudioProcessing({ path: clip.path, percent })
+    })
+    await window.electron.stripAudio(clip.path)
+    off()
+    setAudioProcessing(null)
+    setClips(prev => prev.map(c => c.path === clip.path ? { ...c, hasAudio: 'muted' } : c))
+  }
+
+  const handleRestoreAudio = async () => {
+    const clip = contextMenu.clip
+    setContextMenu(null)
+    setAudioProcessing({ path: clip.path, percent: 0 })
+    const off = window.electron.onAudioProcessProgress(({ percent }) => {
+      setAudioProcessing({ path: clip.path, percent })
+    })
+    await window.electron.restoreAudio(clip.path)
+    off()
+    setAudioProcessing(null)
+    setClips(prev => prev.map(c => c.path === clip.path ? { ...c, hasAudio: true } : c))
+  }
+
+const handleDeleteRequest = () => {
     const clip = contextMenu.clip
     setContextMenu(null)
     if (deleteConfirmation) {
@@ -440,6 +536,12 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
   const hasMore = clips.length > visibleCount
   const parentLabel = currentPath.length === 1 ? 'Racine' : currentPath[currentPath.length - 2]
 
+  if (loading) return (
+    <div className="clips-loading">
+      <div className="clips-spinner" />
+      <span className="clips-loading-text">Chargement des clips...</span>
+    </div>
+  )
   if (clips.length === 0 && folders.length === 0 && currentPath.length === 0) return null
 
   return (
@@ -556,29 +658,16 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
         ))}
 
         {visibleClips.map((clip) => (
-          <div
+          <ClipCard
             key={clip.path}
-            className={`clip-item${selectedPaths.has(clip.path) ? ' clip-selected' : ''}`}
+            clip={clip}
+            isSelected={selectedPaths.has(clip.path)}
+            processingPercent={audioProcessing?.path === clip.path ? audioProcessing.percent : null}
             onContextMenu={e => handleRightClick(e, clip)}
             onMouseUp={(e) => handleClipClick(e, clip)}
-          >
-            <div
-              className="clip-drag-handle"
-              title="Glisser vers un dossier"
-              draggable
-              onMouseDown={e => e.stopPropagation()}
-              onDragStart={e => handleClipDragStart(e, clip)}
-              onDragEnd={handleClipDragEnd}
-            >
-              ⠿
-            </div>
-            {selectedPaths.has(clip.path) && <div className="clip-check">✓</div>}
-            <ClipThumb filePath={clip.path} />
-            <div className="clip-info">
-              <span className="clip-name">{clip.name}</span>
-              <span className="clip-meta">{formatSize(clip.size)} · {formatDate(clip.mtime)}</span>
-            </div>
-          </div>
+            onDragStart={e => handleClipDragStart(e, clip)}
+            onDragEnd={handleClipDragEnd}
+          />
         ))}
       </div>
 
@@ -640,6 +729,8 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
           onMoveToFolder={handleContextMoveToFolder}
           onReveal={() => { window.electron.revealClipFile(contextMenu.clip.path); setContextMenu(null) }}
           onDelete={handleDeleteRequest}
+          onMuteAudio={contextMenu.clip.hasAudio === true && audioProcessing?.path !== contextMenu.clip.path ? handleMuteAudio : null}
+          onRestoreAudio={contextMenu.clip.hasAudio === 'muted' && audioProcessing?.path !== contextMenu.clip.path ? handleRestoreAudio : null}
           onClose={() => setContextMenu(null)}
         />
       )}
