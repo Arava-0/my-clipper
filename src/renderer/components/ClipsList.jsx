@@ -10,6 +10,11 @@ const IconFolder = ({ size = 13 }) => (
     <path d="M3 7a2 2 0 012-2h4.17a2 2 0 011.42.59l1.83 1.82A2 2 0 0013.83 8H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
   </svg>
 )
+const IconCopy = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+  </svg>
+)
 const IconEye = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -64,7 +69,7 @@ function formatDate(ms) {
   return new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function ClipCard({ clip, isSelected, processingPercent, onContextMenu, onMouseUp, onDragStart, onDragEnd }) {
+function ClipCard({ clip, isSelected, processingPercent, copyState, onContextMenu, onMouseUp, onDragStart, onDragEnd }) {
   const src = encodeURI(`file://${clip.path.replace(/\\/g, '/')}`)
   const videoRef = useRef(null)
 
@@ -104,7 +109,9 @@ function ClipCard({ clip, isSelected, processingPercent, onContextMenu, onMouseU
         <span className="clip-name">{clip.name}</span>
         <span className="clip-meta">
           <span>{formatSize(clip.size)} · {formatDate(clip.mtime)}</span>
-          {clip.hasAudio === null && <span className="clip-audio-checking" />}
+          {copyState === 'copying' && <span className="clip-audio-checking" title="Copie en cours..." />}
+          {copyState === 'done' && <span className="clip-copy-done" title="Copié !">✓</span>}
+          {!copyState && clip.hasAudio === null && <span className="clip-audio-checking" />}
           {clip.hasAudio === false && <span className="clip-no-audio-icon"><IconVolumeOff size={14} /></span>}
           {clip.hasAudio === 'muted' && <span className="clip-no-audio-icon" style={{ color: '#f4a261' }}><IconVolumeOff size={14} /></span>}
         </span>
@@ -113,7 +120,7 @@ function ClipCard({ clip, isSelected, processingPercent, onContextMenu, onMouseU
   )
 }
 
-function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, onDelete, onMuteAudio, onRestoreAudio, onClose }) {
+function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, onCopy, onDelete, onMuteAudio, onRestoreAudio, onClose }) {
   const ref = useRef(null)
 
   useEffect(() => {
@@ -145,6 +152,9 @@ function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, 
       )}
       <button className="context-menu-item" onClick={onReveal}>
         <span className="context-menu-icon"><IconEye /></span> Voir dans le dossier
+      </button>
+      <button className="context-menu-item" onClick={onCopy}>
+        <span className="context-menu-icon"><IconCopy /></span> Copier le clip
       </button>
       {onMuteAudio && (
         <button className="context-menu-item" onClick={onMuteAudio}>
@@ -298,6 +308,7 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
   const [newFolderName, setNewFolderName] = useState('')
   const [loading, setLoading] = useState(true)
   const [audioProcessing, setAudioProcessing] = useState(null)
+  const [clipCopying, setClipCopying] = useState(null)
   const ref = useRef(null)
   const drag = useRef({ active: false, startY: 0, startScroll: 0 })
   const draggingClip = useRef(null)
@@ -410,6 +421,15 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
     await window.electron.moveClip({ clipPath: contextMenu.clip.path, targetPathArr: [...currentPath, folderName] })
     setContextMenu(null)
     loadData(currentPath)
+  }
+
+  const handleCopyClip = async () => {
+    const clip = contextMenu.clip
+    setContextMenu(null)
+    setClipCopying({ path: clip.path, done: false })
+    await window.electron.copyClip(clip.path)
+    setClipCopying({ path: clip.path, done: true })
+    setTimeout(() => setClipCopying(null), 1500)
   }
 
 const handleMuteAudio = async () => {
@@ -663,6 +683,7 @@ const handleDeleteRequest = () => {
             clip={clip}
             isSelected={selectedPaths.has(clip.path)}
             processingPercent={audioProcessing?.path === clip.path ? audioProcessing.percent : null}
+            copyState={clipCopying?.path === clip.path ? (clipCopying.done ? 'done' : 'copying') : null}
             onContextMenu={e => handleRightClick(e, clip)}
             onMouseUp={(e) => handleClipClick(e, clip)}
             onDragStart={e => handleClipDragStart(e, clip)}
@@ -728,6 +749,7 @@ const handleDeleteRequest = () => {
           onMoveToParent={currentPath.length > 0 ? { label: parentLabel, fn: handleContextMoveToParent } : null}
           onMoveToFolder={handleContextMoveToFolder}
           onReveal={() => { window.electron.revealClipFile(contextMenu.clip.path); setContextMenu(null) }}
+          onCopy={handleCopyClip}
           onDelete={handleDeleteRequest}
           onMuteAudio={contextMenu.clip.hasAudio === true && audioProcessing?.path !== contextMenu.clip.path ? handleMuteAudio : null}
           onRestoreAudio={contextMenu.clip.hasAudio === 'muted' && audioProcessing?.path !== contextMenu.clip.path ? handleRestoreAudio : null}
