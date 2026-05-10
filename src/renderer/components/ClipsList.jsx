@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, Fragment } from 'react'
 
 const IconArrowUp = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -122,6 +122,7 @@ function ClipCard({ clip, isSelected, processingPercent, copyState, onContextMen
 
 function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, onCopy, onDelete, onMuteAudio, onRestoreAudio, onClose }) {
   const ref = useRef(null)
+  const [pos, setPos] = useState({ top: y, left: x })
 
   useEffect(() => {
     const h = () => onClose()
@@ -129,8 +130,16 @@ function ContextMenu({ x, y, folders, onMoveToParent, onMoveToFolder, onReveal, 
     return () => document.removeEventListener('mousedown', h)
   }, [onClose])
 
+  useLayoutEffect(() => {
+    if (!ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    const top = y + rect.height > window.innerHeight - 8 ? y - rect.height : y
+    const left = x + rect.width > window.innerWidth - 8 ? x - rect.width : x
+    setPos({ top, left })
+  }, [x, y])
+
   return (
-    <div ref={ref} className="context-menu" style={{ top: y, left: x }} onMouseDown={e => e.stopPropagation()}>
+    <div ref={ref} className="context-menu" style={{ top: pos.top, left: pos.left }} onMouseDown={e => e.stopPropagation()}>
       {(onMoveToParent || folders.length > 0) && (
         <>
           <div className="context-menu-section">Déplacer vers</div>
