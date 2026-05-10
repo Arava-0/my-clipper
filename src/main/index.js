@@ -1,5 +1,5 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
-const { clipVideo, getVideoInfo } = require('./ffmpeg')
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, clipboard } = require('electron')
+const { clipVideo, getVideoInfo, muteAudioInPlace, restoreAudioOnFile, checkHasAudio } = require('./ffmpeg')
 const { getSettings, setSettings } = require('./settings')
 const path = require('path')
 const fs = require('fs')
@@ -71,17 +71,40 @@ ipcMain.handle('ffmpeg:info', async (_event, filePath) => {
   return getVideoInfo(filePath)
 })
 
-ipcMain.handle('ffmpeg:clip', async (event, { inputPath, startTime, endTime }) => {
+ipcMain.handle('ffmpeg:clip', async (event, { inputPath, startTime, endTime, muteAudio }) => {
   const { outputDir } = getSettings()
   try {
     const outputPath = await clipVideo(inputPath, startTime, endTime, outputDir, (progress) => {
       event.sender.send('clip-progress', progress)
+    }, muteAudio)
+    return { success: true, outputPath }
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('ffmpeg:strip-audio', async (event, filePath) => {
+  try {
+    const outputPath = await muteAudioInPlace(filePath, (percent) => {
+      event.sender.send('audio-process-progress', { filePath, percent })
     })
     return { success: true, outputPath }
   } catch (err) {
     return { success: false, error: err.message }
   }
 })
+
+ipcMain.handle('ffmpeg:restore-audio', async (event, filePath) => {
+  try {
+    const outputPath = await restoreAudioOnFile(filePath, (percent) => {
+      event.sender.send('audio-process-progress', { filePath, percent })
+    })
+    return { success: true, outputPath }
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
+})
+
 
 ipcMain.handle('settings:get', () => getSettings())
 
@@ -98,13 +121,18 @@ function resolveDir(outputDir, pathArr) {
   return path.join(outputDir, ...pathArr)
 }
 
-ipcMain.handle('clips:list', (_e, pathArr) => {
-  const { outputDir } = getSettings()
+ipcMain.handle('clips:check-audio-batch', async (_e, paths) => {
+  const results = await Promise.all(paths.map(async p => ({ path: p, hasAudio: await checkHasAudio(p) })))
+  return results
+})
+
+ipcMain.handle('clips:list', async (_e, pathArr) => {
+  const { outputDir, maxClips } = getSettings()
   const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v']
   const dir = resolveDir(outputDir, pathArr)
   try {
     if (!fs.existsSync(dir)) return []
-    return fs.readdirSync(dir)
+    const files = fs.readdirSync(dir)
       .filter(f => videoExts.includes(path.extname(f).slice(1).toLowerCase()))
       .map(f => {
         const fullPath = path.join(dir, f)
@@ -112,6 +140,13 @@ ipcMain.handle('clips:list', (_e, pathArr) => {
         return { name: f, path: fullPath, size: stat.size, mtime: stat.mtimeMs }
       })
       .sort((a, b) => b.mtime - a.mtime)
+    const visible = files.slice(0, maxClips)
+    const rest = files.slice(maxClips)
+    const audioFlags = await Promise.all(visible.map(f => checkHasAudio(f.path)))
+    return [
+      ...visible.map((f, i) => ({ ...f, hasAudio: audioFlags[i] })),
+      ...rest.map(f => ({ ...f, hasAudio: null })),
+    ]
   } catch {
     return []
   }
@@ -169,6 +204,23 @@ ipcMain.handle('clips:move-clip', (_e, { clipPath, targetPathArr }) => {
   const destPath = path.join(destDir, fileName)
   fs.renameSync(clipPath, destPath)
   return destPath
+})
+
+ipcMain.handle('clips:copy', (_e, filePath) => {
+  return new Promise((resolve, reject) => {
+    const escaped = filePath.replace(/'/g, "''")
+    const script = `
+Add-Type -AssemblyName System.Windows.Forms
+$col = New-Object System.Collections.Specialized.StringCollection
+$col.Add('${escaped}')
+[System.Windows.Forms.Clipboard]::SetFileDropList($col)
+`
+    const { execFile } = require('child_process')
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], (err) => {
+      if (err) reject(err)
+      else resolve()
+    })
+  })
 })
 
 ipcMain.handle('clips:delete', (_e, filePath) => {
