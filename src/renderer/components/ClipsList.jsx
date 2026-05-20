@@ -392,10 +392,11 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
 
   const performMove = async (targetPathArr) => {
     if (!draggingClip.current) return
-    await window.electron.moveClip({ clipPath: draggingClip.current.path, targetPathArr })
+    const movedPath = draggingClip.current.path
+    await window.electron.moveClip({ clipPath: movedPath, targetPathArr })
     draggingClip.current = null
     setDragOverTarget(null)
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => c.path !== movedPath))
   }
 
   const dragOver = (e, target) => {
@@ -426,15 +427,17 @@ export default function ClipsList({ onLoad, refreshKey, settings }) {
   }
 
   const handleContextMoveToParent = async () => {
-    await window.electron.moveClip({ clipPath: contextMenu.clip.path, targetPathArr: currentPath.slice(0, -1) })
+    const movedPath = contextMenu.clip.path
+    await window.electron.moveClip({ clipPath: movedPath, targetPathArr: currentPath.slice(0, -1) })
     setContextMenu(null)
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => c.path !== movedPath))
   }
 
   const handleContextMoveToFolder = async (folderName) => {
-    await window.electron.moveClip({ clipPath: contextMenu.clip.path, targetPathArr: [...currentPath, folderName] })
+    const movedPath = contextMenu.clip.path
+    await window.electron.moveClip({ clipPath: movedPath, targetPathArr: [...currentPath, folderName] })
     setContextMenu(null)
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => c.path !== movedPath))
   }
 
   const handleCopyClip = async () => {
@@ -478,14 +481,15 @@ const handleDeleteRequest = () => {
     if (deleteConfirmation) {
       setConfirmDelete(clip)
     } else {
-      window.electron.deleteClip(clip.path).then(() => loadData(currentPath))
+      window.electron.deleteClip(clip.path).then(() => setClips(prev => prev.filter(c => c.path !== clip.path)))
     }
   }
 
   const doDeleteClip = async () => {
-    await window.electron.deleteClip(confirmDelete.path)
+    const deletedPath = confirmDelete.path
+    await window.electron.deleteClip(deletedPath)
     setConfirmDelete(null)
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => c.path !== deletedPath))
   }
 
   const handleFolderRightClick = (e, folder) => {
@@ -518,7 +522,7 @@ const handleDeleteRequest = () => {
     setFolderContextMenu(null)
     if (folder.clipCount === 0 && !deleteConfirmation) {
       window.electron.deleteFolder({ folderPath: folder.path, action: 'rmdir', parentPathArr: currentPath })
-        .then(() => loadData(currentPath))
+        .then(() => setFolders(prev => prev.filter(f => f.path !== folder.path)))
       return
     }
     setDeletingFolder(folder)
@@ -528,7 +532,11 @@ const handleDeleteRequest = () => {
     const folder = deletingFolder
     setDeletingFolder(null)
     await window.electron.deleteFolder({ folderPath: folder.path, action, parentPathArr: currentPath })
-    loadData(currentPath)
+    if (action === 'delete-all' || action === 'rmdir') {
+      setFolders(prev => prev.filter(f => f.path !== folder.path))
+    } else {
+      loadData(currentPath)
+    }
   }
 
   const handleCreateFolder = async (e) => {
@@ -542,28 +550,31 @@ const handleDeleteRequest = () => {
   }
 
   const handleSelectionMoveToFolder = async (folderName) => {
-    await Promise.all([...selectedPaths].map(p =>
+    const moved = new Set(selectedPaths)
+    await Promise.all([...moved].map(p =>
       window.electron.moveClip({ clipPath: p, targetPathArr: [...currentPath, folderName] })
     ))
     setSelectionMoveOpen(false)
     setSelectedPaths(new Set())
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => !moved.has(c.path)))
   }
 
   const handleSelectionMoveToParent = async () => {
-    await Promise.all([...selectedPaths].map(p =>
+    const moved = new Set(selectedPaths)
+    await Promise.all([...moved].map(p =>
       window.electron.moveClip({ clipPath: p, targetPathArr: currentPath.slice(0, -1) })
     ))
     setSelectionMoveOpen(false)
     setSelectedPaths(new Set())
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => !moved.has(c.path)))
   }
 
   const doDeleteSelection = async () => {
-    await Promise.all([...selectedPaths].map(p => window.electron.deleteClip(p)))
+    const deleted = new Set(selectedPaths)
+    await Promise.all([...deleted].map(p => window.electron.deleteClip(p)))
     setConfirmDeleteSelection(false)
     setSelectedPaths(new Set())
-    loadData(currentPath)
+    setClips(prev => prev.filter(c => !deleted.has(c.path)))
   }
 
   const visibleClips = clips.slice(0, visibleCount)
