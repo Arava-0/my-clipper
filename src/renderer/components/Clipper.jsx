@@ -1,4 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+
+const IconCopy = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+  </svg>
+)
 
 function formatTime(s) {
   if (!isFinite(s) || isNaN(s)) return '0:00:00.000'
@@ -20,13 +26,21 @@ export default function Clipper({ duration, currentTime, videoPath, startOffset,
   const [endTime, setEndTime] = useState(0)
   const [status, setStatus] = useState(null)
   const [progress, setProgress] = useState(null)
+  const [copyDone, setCopyDone] = useState(false)
 
   useEffect(() => {
     setStartTime(0)
     setEndTime(0)
     setStatus(null)
     setProgress(null)
+    setCopyDone(false)
   }, [videoPath])
+
+  const handleCopyClip = useCallback(async (path) => {
+    await window.electron.copyClip(path)
+    setCopyDone(true)
+    setTimeout(() => setCopyDone(false), 1500)
+  }, [])
 
   const setStart = () => setStartTime(currentTime)
   const setEnd = () => setEndTime(currentTime)
@@ -140,6 +154,9 @@ export default function Clipper({ duration, currentTime, videoPath, startOffset,
               <span>Saved: {status.path}</span>
               <button className="btn-reveal" onClick={() => window.electron.revealClipFile(status.path)}>
                 Voir dans le dossier
+              </button>
+              <button className="btn-reveal" onClick={() => handleCopyClip(status.path)} title="Copier dans le presse-papier">
+                {copyDone ? '✓ Copié' : <><IconCopy /> Copier</>}
               </button>
             </>
           ) : `Error: ${status.error}`}
