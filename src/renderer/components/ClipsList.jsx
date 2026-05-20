@@ -15,6 +15,11 @@ const IconCopy = () => (
     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
   </svg>
 )
+const IconCheck = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+)
 const IconEye = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -110,7 +115,7 @@ function ClipCard({ clip, isSelected, processingPercent, copyState, onContextMen
         <span className="clip-meta">
           <span>{formatSize(clip.size)} · {formatDate(clip.mtime)}</span>
           {copyState === 'copying' && <span className="clip-audio-checking" title="Copie en cours..." />}
-          {copyState === 'done' && <span className="clip-copy-done" title="Copié !">✓</span>}
+          {copyState === 'done' && <span className="clip-copy-done" title="Copié !"><IconCheck /></span>}
           {!copyState && clip.hasAudio === null && <span className="clip-audio-checking" />}
           {clip.hasAudio === false && <span className="clip-no-audio-icon"><IconVolumeOff size={14} /></span>}
           {clip.hasAudio === 'muted' && <span className="clip-no-audio-icon" style={{ color: '#f4a261' }}><IconVolumeOff size={14} /></span>}

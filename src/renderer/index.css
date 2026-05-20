@@ -720,10 +720,10 @@ body {
 .clip-no-audio-icon { color: var(--accent); display: flex; align-items: center; flex-shrink: 0; }
 
 .clip-copy-done {
-  font-size: 11px;
   color: #6fcf97;
   flex-shrink: 0;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
 }
 
 .clip-audio-checking {
@@ -1112,6 +1112,9 @@ body {
 .status-err { background: #3a1a1a; color: #eb5757; }
 .btn-reveal {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 8px;
   font-size: 11px;
   background: #2a5a2a;
